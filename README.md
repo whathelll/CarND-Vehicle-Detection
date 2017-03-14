@@ -28,6 +28,7 @@ For the model then it became an easy task
 model_path = "./model_data/tiny-yolo-voc.h5"
 yolo_model = load_model(model_path)
 ```
+The model I used can be downloaded from here: https://drive.google.com/open?id=0BxrR4D9fa_NkR2FfRVIwNW5RZDQ
 
 You'll see in cell 6 & 7 of my notebook that I've taken 4 functions from the YAD2k project to be part of my pipeline.  
 "yolo_head" splits the last layer into:
@@ -86,6 +87,8 @@ Initial results showed multiple bounding boxes on certain frames, after looking 
 ### Here is the output of test image 5 after being through the pipeline:
 ![alt text][image1]
 
+### Performance
+I just ran this on my laptop and I'm getting a performance of 1.6s per frame on my CPU. I've not tried it on an AWS GPU instance yet but I expect it'll be much faster. 
 
 ---
 
