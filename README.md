@@ -1,33 +1,107 @@
-# Vehicle Detection
-[![Udacity - Self-Driving Car NanoDegree](https://s3.amazonaws.com/udacity-sdc/github/shield-carnd.svg)](http://www.udacity.com/drive)
 
-
-In this project, your goal is to write a software pipeline to detect vehicles in a video (start with the test_video.mp4 and later implement on full project_video.mp4), but the main output or product we want you to create is a detailed writeup of the project.  Check out the [writeup template](https://github.com/udacity/CarND-Vehicle-Detection/blob/master/writeup_template.md) for this project and use it as a starting point for creating your own writeup.  
-
-Creating a great writeup:
----
-A great writeup should include the rubric points as well as your description of how you addressed each point.  You should include a detailed description of the code used in each step (with line-number references and code snippets where necessary), and links to other supporting documents or external references.  You should include images in your writeup to demonstrate how your code works with examples.  
-
-All that said, please be concise!  We're not looking for you to write a book here, just a brief description of how you passed each rubric point, and references to the relevant code :). 
-
-You can submit your writeup in markdown or use another method and submit a pdf instead.
-
-The Project
 ---
 
-The goals / steps of this project are the following:
+**Vehicle Detection Project**
 
-* Perform a Histogram of Oriented Gradients (HOG) feature extraction on a labeled training set of images and train a classifier Linear SVM classifier
-* Optionally, you can also apply a color transform and append binned color features, as well as histograms of color, to your HOG feature vector. 
-* Note: for those first two steps don't forget to normalize your features and randomize a selection for training and testing.
-* Implement a sliding-window technique and use your trained classifier to search for vehicles in images.
-* Run your pipeline on a video stream (start with the test_video.mp4 and later implement on full project_video.mp4) and create a heat map of recurring detections frame by frame to reject outliers and follow detected vehicles.
-* Estimate a bounding box for vehicles detected.
 
-Here are links to the labeled data for [vehicle](https://s3.amazonaws.com/udacity-sdc/Vehicle_Tracking/vehicles.zip) and [non-vehicle](https://s3.amazonaws.com/udacity-sdc/Vehicle_Tracking/non-vehicles.zip) examples to train your classifier.  These example images come from a combination of the [GTI vehicle image database](http://www.gti.ssr.upm.es/data/Vehicle_database.html), the [KITTI vision benchmark suite](http://www.cvlibs.net/datasets/kitti/), and examples extracted from the project video itself.   You are welcome and encouraged to take advantage of the recently released [Udacity labeled dataset](https://github.com/udacity/self-driving-car/tree/master/annotations) to augment your training data.  
 
-Some example images for testing your pipeline on single frames are located in the `test_images` folder.  To help the reviewer examine your work, please save examples of the output from each stage of your pipeline in the folder called `ouput_images`, and include them in your writeup for the project by describing what each image shows.    The video called `project_video.mp4` is the video your pipeline should work well on.  
+[//]: # (Image References)
+[image1]: ./examples/example.png
 
-**As an optional challenge** Once you have a working pipeline for vehicle detection, add in your lane-finding algorithm from the last project to do simultaneous lane-finding and vehicle detection!
+## [Rubric](https://review.udacity.com/#!/rubrics/513/view) Points
+###Here I will consider the rubric points individually and describe how I addressed each point in my implementation.  
 
-**If you're feeling ambitious** (also totally optional though), don't stop there!  We encourage you to go out and take video of your own, and show us how you would implement this project on a new video!
+---
+###Writeup / README
+
+####1. Provide a Writeup / README that includes all the rubric points and how you addressed each one.  
+While starting this project I had saw discussions in the Slack channels of people using full CNN approaches such as YOLO and SSD to complete their project. I had a look around the internet on YOLO and I became really interested in this supposedly fast detection method so I decided that I want to learn to implement these instead as well.
+
+After doing some research on the internet. Between YOLO, SSD and YOLOv2 (or YOLO9000), YOLOv2 seems to be claiming the fastest FPS on object detection with similar Mean Average Precision so I decided I will give the latest YOLOv2 a go. I also realized training a new network from scratch will take a lot of time and effort, the 2nd challenge is how to get it working in Keras or Tensorflow. The YAD2K project by Allanzelener on github seemed to be the easiest to work with, the code was recent and I could roughly understand what he was trying to do. Just reading the paper, it was challenging to understand how to interpret the last layer except it was a convolutional layer of 13x13 grids predicting "5 boxes at each grid location with 5 coordinates each and 20 classes per box (13x13x125)" as in the paper. YAD2K also used Tensorflow to do the interpretation, I thought I'd reimplement this using just numpy to understand the intricacies of this last layer. However after spend time reverse engineering this I got stuck at the point where I needed to filter out the boxes and I couldn't find a nice way of implmenting a tf.boolean_mask for a 5 dimensional tensor in numpy. In a moment of frustration I decided just make use of the functions from YAD2k for interpreting the last layer with some adjustments to only filter for cars.
+
+My code can be found in [test-notebook-tf.ipynb](./test-notebook-tf.ipynb)
+
+YAD2K did the heavy lifting and provided a python library to build a Keras model from the Darknet weights. I tried both the tiny-yolo-voc and yolo-voc, I used yolo-voc as that had a higher mAP.
+
+For the model then it became an easy task
+```
+model_path = "./model_data/tiny-yolo-voc.h5"
+yolo_model = load_model(model_path)
+```
+
+You'll see in cell 6 & 7 of my notebook that I've taken 4 functions from the YAD2k project to be part of my pipeline.  
+"yolo_head" splits the last layer into:
+- 1x13x13x5x2 for the x & y for the 5 different box anchors at each grid location
+- 1x13x13x5x2 for the width and height for the 5 different box anchors
+- 1x13x13x5x1 for the box confidence
+- 1x13x13x5x20 for the probabilities for the 20 classes in the VOC2007 set
+
+"yolo_boxes_to_corners" calculates the box coordinates on the image  
+"yolo_filter_boxes" filters out predictions below a certain threshold  
+"yolo_eva" builds the pipeline for tensorflow using the above 3 functions  
+
+Given this my pipeline is as simple as below with an additional logic to skip anything that's not cars and then drawing a rectangle.
+```
+def pipeline(image):
+    image_data = cv2.resize(image,(416,416)).astype("float32")
+
+    image_data /= 255.
+    image_data = np.expand_dims(image_data, axis=0)
+
+    sess = K.get_session()
+    out_boxes, out_scores, out_classes = sess.run(
+        [boxes, scores, classes],
+        feed_dict={
+            yolo_model.input: image_data,
+            input_image_shape: [image.shape[0], image.shape[1]],
+            K.learning_phase(): 0
+        })
+
+    for i, c in reversed(list(enumerate(out_classes))):
+        predicted_class = class_names[c]
+        if predicted_class != 'car':
+            continue
+
+        box = out_boxes[i]
+        score = out_scores[i]
+
+        top, left, bottom, right = box
+        cv2.rectangle(image,(left, top),(right, bottom),(0,255,0),3)
+    return image
+```
+
+
+---
+
+### Video Implementation
+
+####1.
+Here's a [link to my video result](./project_video_output.mp4)
+
+
+####2. Describe how (and identify where in your code) you implemented some kind of filter for false positives and some method for combining overlapping bounding boxes.
+Initial results showed multiple bounding boxes on certain frames, after looking at the results and increasing my threshold to predictions of 0.6 it solved my problem.
+
+
+### Here is the output of test image 5 after being through the pipeline:
+![alt text][image1]
+
+
+---
+
+###Discussion
+
+####1. Briefly discuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
+- This pipeline will work for cars, if we expand it to start bounding traffic signs or lights then I'll have to train it from scratch again or use a different model or do some transfer training. I've yet to know it enough to do this. However after going down this path I think a FCNN approach is the right way to go for this problem set.
+- Understanding the last layer took some time but it was a good learning experience
+- Would love to be able to implement this network from scratch, however just from reading the paper it seems like it will take a long time for me.
+- Also still don't understand the intricacies of the research paper and would like to spend some more time on it
+- I feel like there's still a lot for me to learn and experiment. Would love to be able to implement SSD as well.
+
+
+###References
+This piece was definitely done by leveraging the efforts and work of other people.
+1. YOLO9000 Research Paper https://arxiv.org/pdf/1612.08242
+2. https://github.com/allanzelener/YAD2K
+3. Blog by Menxi Wu  https://medium.com/@xslittlegrass/almost-real-time-vehicle-detection-using-yolo-da0f016b43de#.fl1n9d4e1
+4. YOLO website https://pjreddie.com/darknet/yolo/
