@@ -88,7 +88,7 @@ Initial results showed multiple bounding boxes on certain frames, after looking 
 ![alt text][image1]
 
 ### Performance
-I just ran this on my laptop and I'm getting a performance of 1.6s per frame on my CPU. I've not tried it on an AWS GPU instance yet but I expect it'll be much faster. 
+I just ran this on my laptop and I'm getting a performance of 1.6s per frame on my CPU. I've not tried it on an AWS GPU instance yet but I expect it'll be much faster.
 
 ---
 
@@ -108,3 +108,11 @@ This piece was definitely done by leveraging the efforts and work of other peopl
 2. https://github.com/allanzelener/YAD2K
 3. Blog by Menxi Wu  https://medium.com/@xslittlegrass/almost-real-time-vehicle-detection-using-yolo-da0f016b43de#.fl1n9d4e1
 4. YOLO website https://pjreddie.com/darknet/yolo/
+
+
+###Other things to look into:
+https://medium.com/@tuennermann/convolutional-neural-networks-to-find-cars-43cbc4fb713#.a6pj1dun5
+https://chatbotslife.com/small-u-net-for-vehicle-detection-9eec216f9fd6#.m2piudq10
+https://chatbotslife.com/towards-a-real-time-vehicle-detection-ssd-multibox-approach-2519af2751c#.4dlnpb2cs
+https://github.com/HTuennermann/Vehicle-Detection-and-Tracking/
+https://people.eecs.berkeley.edu/~jonlong/long_shelhamer_fcn.pdf
