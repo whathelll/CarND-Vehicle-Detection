@@ -1,0 +1,8 @@
+model_data
+non-vehicles
+vehicles
+object-dataset
+object-detection-crowdai
+*.zip
+*.tar.gz
+*.h5
